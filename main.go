@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"strconv"
+	"strings"
 )
 
 type Bitstream struct {
@@ -22,6 +26,34 @@ func generateBits() *Bitstream {
 			bitmap[numb]++
 		} else {
 			bitmap[numb] = 1
+		}
+	}
+
+	return &Bitstream{
+		arr:    bitstream,
+		bitmap: bitmap,
+	}
+}
+
+func convertToBitstream(byteArr []byte) *Bitstream {
+	bitstream := make([]int, 0)
+	bitmap := make(map[int]int, 0)
+
+	for _, b := range byteArr {
+		str := hexToBin(b)
+
+		for i := 0; i < len(str); i++ {
+			integer, err := strconv.Atoi(string(str[i]))
+			if err != nil {
+				panic(err)
+			}
+			bitstream = append(bitstream, integer)
+
+			if _, ok := bitmap[integer]; ok {
+				bitmap[integer]++
+			} else {
+				bitmap[integer] = 1
+			}
 		}
 	}
 
@@ -69,7 +101,7 @@ func poker(bitstream *Bitstream) bool {
 func runs(bitstream *Bitstream) bool {
 	lengths := make(map[int]int)
 	prev := -1
-	counter := 0
+	counter := 1
 
 	for i := 0; i < len(bitstream.arr); i++ {
 		curr := bitstream.arr[i]
@@ -132,9 +164,7 @@ func longruns(bitstream *Bitstream) bool {
 		curr := bitstream.arr[i]
 
 		if curr == prev {
-			if counter < 34 {
-				counter++
-			}
+			counter++
 		} else {
 			if _, ok := lengths[counter]; ok {
 				lengths[counter]++
@@ -154,11 +184,39 @@ func longruns(bitstream *Bitstream) bool {
 	return true
 }
 
-func main() {
-	bitstream := generateBits()
+func hexToBin(in byte) string {
+	var out []byte
+	for i := 3; i >= 0; i-- {
+		b := (in >> uint(i))
+		out = append(out, (b%2)+48)
+	}
 
-	fmt.Printf("Monobit: %v\n", monobit(bitstream))
-	fmt.Printf("Poker: %v\n", poker(bitstream))
-	fmt.Printf("Runs: %v\n", runs(bitstream))
-	fmt.Printf("Longrun: %v\n", longruns(bitstream))
+	return string(out)
+}
+
+func main() {
+	// bitstream := generateBits()
+	// fmt.Printf("Monobit: %v\n", monobit(bitstream))
+	// fmt.Printf("Poker: %v\n", poker(bitstream))
+	// fmt.Printf("Runs: %v\n", runs(bitstream))
+	// fmt.Printf("Longrun: %v\n", longruns(bitstream))
+
+	f, _ := os.Open("./keys")
+	byteValue, _ := ioutil.ReadAll(f)
+
+	keys := strings.Split(string(byteValue), "\n")
+
+	for i := 0; i < len(keys); i++ {
+		byteArr := []byte(keys[i])
+
+		bitstream := convertToBitstream(byteArr)
+
+		fmt.Printf("Running for key #%d\n", i+1)
+		fmt.Printf("Monobit: %v\n", monobit(bitstream))
+		fmt.Printf("Poker: %v\n", poker(bitstream))
+		fmt.Printf("Runs: %v\n", runs(bitstream))
+		fmt.Printf("Longrun: %v\n", longruns(bitstream))
+		fmt.Println()
+		fmt.Println()
+	}
 }
